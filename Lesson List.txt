@@ -1,0 +1,83 @@
+Build A Blog With Flask - Flask Friday
+
+Unit 1	Introduction | Video 1	
+ 
+Unit 2	How To Use Python On A Web Page With Jinja2 | Video 2	
+ 
+Unit 3	Custom Error Pages and Version Control | Video 3	
+ 
+Unit 4	Templates, Bootstrap Navbars, and Links | Video 4	
+ 
+Unit 5	Web Forms With WTF! | Video 5	
+ 
+Unit 6	How To Use Messages With Flask | Video 6	
+ 
+Unit 7	How to Use CSS Javascript and Images With Flask Static Files | Video 7	
+ 
+Unit 8	How to Use Databases With SQLAlchemy | Video 8	
+ 
+Unit 9	How To Use MySQL Database With Flask | Video 9	
+ 
+Unit 10	How To Update A Record In The Database | Video 10	
+ 
+Unit 11	How To Migrate Database With Flask | Video 11	
+ 
+Unit 12	Delete Database Records With Flask | Video 12	
+ 
+Unit 13	Hashing Passwords With Werkzeug | Video 13	
+ 
+Unit 14	Using Hashed Passwords For Registration | Video 14	
+ 
+Unit 15	Comparing Hashed Passwords To Plaintext Passwords | Video 15	
+ 
+Unit 16	How To Return JSON With Flask For an API | Video 16	
+ 
+Unit 17	Add A Blog Post Model and Form | Video 17	
+ 
+Unit 18	Show Blog Posts Page | Video 18	
+ 
+Unit 19	Individual Blog Post Pages | Video 19	
+ 
+Unit 20	Edit Blog Posts | Video 20	
+ 
+Unit 21	Delete Blog Posts | Video 21	
+ 
+Unit 22	User Login with Flask_Login | Video 22	
+ 
+Unit 23	Create A User Dashboard | Video 23	
+ 
+Unit 24	Two Ways To Lock Down Your Flask App | Video 24	
+ 
+Unit 25	Update User Profile From Dashboard | Video 25	
+ 
+Unit 26	Clean Up Our Flask Code! | Video 26	
+ 
+Unit 27	Update Correct User | Video 27	
+ 
+Unit 28	Create One To Many Database Relationship | Video 28	
+ 
+Unit 29	Only Allow Correct User To Delete Posts | Video 29	
+ 
+Unit 30	Only Allow Correct User To Edit Posts | Video 30	
+ 
+Unit 31	Search Blog Posts From Navbar | Video 31	
+ 
+Unit 32	How To Add A Rich Text Editor | Video 32	
+ 
+Unit 33	Edit Blog Posts With Rich Text Editor | Video 33	
+ 
+Unit 34	Basic Admin Page | Video 34	
+ 
+Unit 35	Format Search Results | Video 35	
+ 
+Unit 36	Set Default Profile Pic | Video 36	
+ 
+Unit 37	About Author Section | Video 37	
+ 
+Unit 38	Upload Profile Picture | Video 38	
+ 
+Unit 39	Deploy Flask App With Database On Heroku For Webhosting | Video 39	
+ 
+Unit 40	Only Delete Correct User | Video 40	
+ 
+Unit 41	Fix And Show Profile Picture | Video 41

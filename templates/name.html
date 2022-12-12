@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<!-- loop through flash messages -->
+{% for message in get_flashed_messages() %}
+    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+{% endfor %}
+
+{% if name %}
+    <h1>Hello, {{ name}}!</h1>
+    <br/>
+    <img src="{{ url_for('static', filename='images/NorthPeak.png' )}}" width=800>
+    <br/><br/>
+    <p id="demo">This is stuff...</p>
+    <!-- import local javascript file -->
+    <script src="{{ url_for('static', filename='js/myfile.js') }}"></script>
+
+    {% else %}
+    <h1>What's Your Name?</h1>
+    <br/>
+    <form method="POST">
+        {{ form.hidden_tag() }}
+        <!-- add Bootstrap 'form-label' class -->
+        {{ form.name.label(class="form-label") }}
+        <!-- form.name = the actual form field, itself (input box) -->
+        {{ form.name(class="form-control") }}
+        <br/>
+        {{ form.submit(class="btn btn-secondary") }}
+    </form>
+{% endif %}
+
+{% endblock %}

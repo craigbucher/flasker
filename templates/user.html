@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<!-- filter options include:
+     upper - convert to all uppercase
+     lower - convert to all lowercase
+     capitalize - capitalize first letter
+     safe - tells flask is OK to act on HTML tags in variables
+     title - 
+     trim - removes trailing spaces
+     striptags - strips/removes HTML tags in input/variables
+     ** There are a whole lot more - look up in documentation ***
+-->
+
+<h1>Hello {{ user_name|capitalize }}</h1>
+
+{% endblock %}
