@@ -1,9 +1,4 @@
 from flask import Flask, render_template, request, redirect, url_for, flash # 'flash' used for messaging
-# pip install flask-wtf
-from flask_wtf import FlaskForm
-from wtforms import StringField, SubmitField, PasswordField, BooleanField, ValidationError # many other kinds of fields
-from wtforms.validators import DataRequired, EqualTo, Length # there are many other kinds of validators, as well
-from wtforms.widgets import TextArea
 # pip install flask-sqlalchemy
 from flask_sqlalchemy import SQLAlchemy # needed for db access
 from datetime import datetime, date
@@ -13,6 +8,9 @@ from werkzeug.security import generate_password_hash, check_password_hash
 # pip install flask_login
 # handles login/out functions, but *does not* handle user registration
 from flask_login import UserMixin, login_user, LoginManager, login_required, logout_user, current_user
+# import all forms from forms.py
+# from forms import LoginForm, PostForm, UserForm, PasswordForm, NameForm
+from forms import *
 
 # Create a flask instance:
 app = Flask(__name__)
@@ -22,10 +20,10 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
 # Initialize the database:
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
-
 # Equivalent to csrf_token
 app.config['SECRET_KEY'] = 'my super secret key that no one is supposed to know'
 
+from models import * # must come after database definitions
 
 # JSON thing:
 @app.route('/date')
@@ -33,29 +31,6 @@ def get_curret_date():
     # If you return a python dictionary, flask will turn it into JSON automatically
     return({'Date': date.today()})
 
-# Create a DB Model: (UserMixin is part of flask-login)
-class Users(db.Model, UserMixin):
-    id = db.Column(db.Integer, primary_key=True) # gets assigned automatically, since primary key
-    username = db.Column(db.String(20), nullable=False)
-    name = db.Column(db.String(200), nullable=False) # max length=200, cannot be blank
-    email = db.Column(db.String(120), nullable=False, unique=True) # must be unique
-    date_added = db.Column(db.DateTime, default=datetime.utcnow)
-    favorite_color = db.Column(db.String(120))
-    password_hash = db.Column(db.String(128))
-
-    @property
-    def password(self):
-        raise AttributeError('Password is not a readable attribute!') # shows error if something goes wrong
-
-    @password.setter
-    def password(self, password):
-        self.password_hash = generate_password_hash(password)
-
-    def verify_password(self, password):
-        return check_password_hash(self.password_hash, password)
-
-    def __repr__(self):  # repr = 'representation'
-        return '<Name %r>' % self.name
 
 # Flask login stuff
 login_manager = LoginManager()
@@ -65,12 +40,6 @@ login_manager.login_view = 'login'
 @login_manager.user_loader
 def load_user(user_id):
     return Users.query.get(int(user_id))
-
-# Create LoginForm:
-class LoginForm(FlaskForm):
-	username = StringField("Username", validators=[DataRequired()])
-	password = PasswordField("Password", validators=[DataRequired()])
-	submit = SubmitField("Submit")
 
 # Create Login page:
 @app.route('/login', methods=['GET', 'POST'])
@@ -120,23 +89,6 @@ def dashboard():
     else:
         return render_template('dashboard.html', form=form, name_to_update=name_to_update, id=id)
 
-
-# Create a blog post model
-class Posts(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String(255))
-    content = db.Column(db.Text)
-    author = db.Column(db.String(255))
-    date_posted = db.Column(db.DateTime, default=datetime.utcnow)
-    slug = db.Column(db.String(255)) # way to reference post in URL other than just using ID
-
-# Create a Posts form
-class PostForm(FlaskForm):
-    title = StringField('Title', validators=[DataRequired()])
-    content = StringField('Content', validators=[DataRequired()], widget=TextArea())
-    author = StringField('Author', validators=[DataRequired()])
-    slug = StringField('Slug', validators=[DataRequired()])
-    submit = SubmitField("Submit")
 
 # Add page to list all posts
 @app.route('/posts')
@@ -211,47 +163,7 @@ def delete_post(id):
         flash('Error Deleting Post!')
         posts = Posts.query.order_by(Posts.date_posted)
         return render_template('posts.html', posts=posts)
-
-# Create a user form
-class UserForm(FlaskForm):
-    name = StringField('Name', validators=[DataRequired()])
-    username = StringField('Username', validators=[DataRequired()])
-    email = StringField('Email', validators=[DataRequired()])
-    favorite_color = StringField('Favorite Color')
-    password_hash = PasswordField('Password', validators=[DataRequired(), EqualTo('password_hash2')])
-    password_hash2 = PasswordField('Confirm Password', validators=[DataRequired()])
-    submit = SubmitField('Add\\Update User') # 'submit' button
-
-# Create a form class
-class NameForm(FlaskForm):
-    name = StringField('What\'s Your Name?', validators=[DataRequired()])
-    submit = SubmitField('Submit') # 'submit' button
-
-    # https://flask-wtf.readthedocs.io/en/1.0.x/
-	# BooleanField                  ## Validators
-	# DateField                     # DataRequired
-	# DateTimeField                 # Email
-	# DecimalField                  # EqualTo
-	# FileField                     # InputRequired
-	# HiddenField                   # IPAddress  
-	# MultipleField                 # Length    
-	# FieldList                     # MacAddress
-	# FloatField                    # NumberRange 
-	# FormField                     # Optional
-	# IntegerField                  # Regexp   
-	# PasswordField                 # URL    
-	# RadioField                    # UUID 
-	# SelectField                   # AnyOf  
-	# SelectMultipleField           # NoneOf          
-	# SubmitField                     
-	# StringField                     
-	# TextAreaField                     
-
-class PasswordForm(FlaskForm):
-    email = StringField('What\'s Your Email?', validators=[DataRequired()])
-    password_hash = PasswordField('Enter Your Password', validators=[DataRequired()])
-    submit = SubmitField('Submit') # 'submit' button
-
+        
 # Create a route decorator
 @app.route('/')
 # def index():
@@ -383,4 +295,39 @@ def page_not_found(e):
 @app.errorhandler(500)
 def internal_server_error(e):
     return render_template('500.html'), 500
+
+############################## MODELS ###################################
+
+# Create a DB Model: (UserMixin is part of flask-login)
+# class Users(db.Model, UserMixin):
+#     id = db.Column(db.Integer, primary_key=True) # gets assigned automatically, since primary key
+#     username = db.Column(db.String(20), nullable=False)
+#     name = db.Column(db.String(200), nullable=False) # max length=200, cannot be blank
+#     email = db.Column(db.String(120), nullable=False, unique=True) # must be unique
+#     date_added = db.Column(db.DateTime, default=datetime.utcnow)
+#     favorite_color = db.Column(db.String(120))
+#     password_hash = db.Column(db.String(128))
+
+#     @property
+#     def password(self):
+#         raise AttributeError('Password is not a readable attribute!') # shows error if something goes wrong
+
+#     @password.setter
+#     def password(self, password):
+#         self.password_hash = generate_password_hash(password)
+
+#     def verify_password(self, password):
+#         return check_password_hash(self.password_hash, password)
+
+#     def __repr__(self):  # repr = 'representation'
+#         return '<Name %r>' % self.name
+
+# # Create a blog post model
+# class Posts(db.Model):
+#     id = db.Column(db.Integer, primary_key=True)
+#     title = db.Column(db.String(255))
+#     content = db.Column(db.Text)
+#     author = db.Column(db.String(255))
+#     date_posted = db.Column(db.DateTime, default=datetime.utcnow)
+#     slug = db.Column(db.String(255)) # way to reference post in URL other than just using ID
 
