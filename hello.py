@@ -11,6 +11,7 @@ from datetime import datetime, date
 from flask_migrate import Migrate # allows for database updates
 from werkzeug.security import generate_password_hash, check_password_hash
 # pip install flask_login
+# handles login/out functions, but *does not* handle user registration
 from flask_login import UserMixin, login_user, LoginManager, login_required, logout_user, current_user
 
 # Create a flask instance:
@@ -32,7 +33,7 @@ def get_curret_date():
     # If you return a python dictionary, flask will turn it into JSON automatically
     return({'Date': date.today()})
 
-# Create a DB Model:
+# Create a DB Model: (UserMixin is part of flask-login)
 class Users(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True) # gets assigned automatically, since primary key
     username = db.Column(db.String(20), nullable=False)
@@ -55,6 +56,70 @@ class Users(db.Model, UserMixin):
 
     def __repr__(self):  # repr = 'representation'
         return '<Name %r>' % self.name
+
+# Flask login stuff
+login_manager = LoginManager()
+login_manager.init_app(app)  # because our app's name is 'app'
+login_manager.login_view = 'login'
+
+@login_manager.user_loader
+def load_user(user_id):
+    return Users.query.get(int(user_id))
+
+# Create LoginForm:
+class LoginForm(FlaskForm):
+	username = StringField("Username", validators=[DataRequired()])
+	password = PasswordField("Password", validators=[DataRequired()])
+	submit = SubmitField("Submit")
+
+# Create Login page:
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    form = LoginForm()
+    if form.validate_on_submit():
+        user = Users.query.filter_by(username=form.username.data).first()
+        if user:
+            # check the hash
+            if check_password_hash(user.password_hash, form.password.data):
+                login_user(user)  # flask_login function
+                flash('Login successful!')
+                return redirect(url_for('dashboard'))
+            else:
+                flash('Username or Password is incorrect')
+        else:
+                flash('That user doesn\'t exist')
+    return render_template('login.html', form=form)
+
+# Create logout function
+@app.route('/logout', methods=['GET', 'POST'])
+@login_required
+def logout():
+    logout_user()
+    flash('Logout Successful!')
+    return redirect(url_for('login'))
+
+# Create Dashboard page:
+@app.route('/dashboard', methods=['GET', 'POST'])
+@login_required
+def dashboard():
+    form = UserForm()
+    id = current_user.id # have to designate, since wasn't passed in URL
+    name_to_update = Users.query.get_or_404(id)
+    if request.method == 'POST':
+        name_to_update.name = request.form['name']
+        name_to_update.email = request.form['email']
+        name_to_update.favorite_color = request.form['favorite_color']
+        name_to_update.username = request.form['username']
+        try:
+            db.session.commit() # commits current values (from form) to DB
+            flash('User Update Successful!')
+            return render_template('dashboard.html', form=form, name_to_update=name_to_update)
+        except:
+            flash('Error - Update Unsuccessful!')
+            return render_template('dashboard.html', form=form, name_to_update=name_to_update)
+    else:
+        return render_template('dashboard.html', form=form, name_to_update=name_to_update, id=id)
+
 
 # Create a blog post model
 class Posts(db.Model):
@@ -88,6 +153,7 @@ def post(id):
 
 # Add Post page
 @app.route('/add_post', methods=['GET', 'POST'])
+@login_required # If user not logged-in, redirects to login page (can't change that)
 def add_post():
     form = PostForm()
     if form.validate_on_submit():
@@ -107,6 +173,7 @@ def add_post():
 
 # Edit Post
 @app.route('/posts/edit/<int:id>', methods=['GET', 'POST'])
+@login_required
 def edit_post(id):
     form = PostForm()
     post = Posts.query.get_or_404(id)
@@ -129,6 +196,7 @@ def edit_post(id):
 
 # Delete Post
 @app.route('/posts/delete/<int:id>')
+@login_required
 def delete_post(id):
     post_to_delete = Posts.query.get_or_404(id)
     try:
@@ -248,6 +316,7 @@ def update(id):
         name_to_update.name = request.form['name']
         name_to_update.email = request.form['email']
         name_to_update.favorite_color = request.form['favorite_color']
+        name_to_update.username = request.form['username']
         try:
             db.session.commit() # commits current values (from form) to DB
             flash('User Update Successful!')
@@ -301,6 +370,9 @@ def test_pw():
         passed = passed,
         form=form,
     )
+
+
+
 
 # Create custom error pages:
 # Invalid URL:
