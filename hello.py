@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, flash # 'flash' used for messaging
+from flask import Flask, render_template, request, redirect, url_for, flash # 'flash' used for messaging
 # pip install flask-wtf
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, PasswordField, BooleanField, ValidationError # many other kinds of fields
@@ -10,7 +10,8 @@ from datetime import datetime, date
 # pip install Flask-Migrate
 from flask_migrate import Migrate # allows for database updates
 from werkzeug.security import generate_password_hash, check_password_hash
-
+# pip install flask_login
+from flask_login import UserMixin, login_user, LoginManager, login_required, logout_user, current_user
 
 # Create a flask instance:
 app = Flask(__name__)
@@ -32,8 +33,9 @@ def get_curret_date():
     return({'Date': date.today()})
 
 # Create a DB Model:
-class Users(db.Model):
+class Users(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True) # gets assigned automatically, since primary key
+    username = db.Column(db.String(20), nullable=False)
     name = db.Column(db.String(200), nullable=False) # max length=200, cannot be blank
     email = db.Column(db.String(120), nullable=False, unique=True) # must be unique
     date_added = db.Column(db.DateTime, default=datetime.utcnow)
@@ -78,6 +80,12 @@ def posts():
     posts = Posts.query.order_by(Posts.date_posted)
     return render_template('posts.html', posts=posts)
 
+# Display a specific post
+@app.route('/posts/<int:id>')
+def post(id):
+    post = Posts.query.get_or_404(id)
+    return render_template('post.html', post=post)
+
 # Add Post page
 @app.route('/add_post', methods=['GET', 'POST'])
 def add_post():
@@ -93,12 +101,53 @@ def add_post():
         db.session.add(post)
         db.session.commit()
         flash('Blog Post Submitted Successfully!')
+        posts = Posts.query.order_by(Posts.date_posted)
+        return render_template('posts.html', posts=posts)
     return render_template('add_post.html', form=form)
 
+# Edit Post
+@app.route('/posts/edit/<int:id>', methods=['GET', 'POST'])
+def edit_post(id):
+    form = PostForm()
+    post = Posts.query.get_or_404(id)
+    if form.validate_on_submit(): # if form has been submitted
+        post.title = form.title.data
+        post.author = form.author.data
+        post.slug = form.slug.data
+        post.content = form.content.data
+        # Update database
+        db.session.add(post)
+        db.session.commit()
+        flash('Post Has Been Updated!')
+        return redirect(url_for('post', id=post.id))
+    # If just loading the page
+    form.title.data = post.title
+    form.author.data = post.author
+    form.slug.data = post.slug
+    form.content.data = post.content
+    return render_template('edit_post.html', form=form)
+
+# Delete Post
+@app.route('/posts/delete/<int:id>')
+def delete_post(id):
+    post_to_delete = Posts.query.get_or_404(id)
+    try:
+        db.session.delete(post_to_delete)
+        db.session.commit()
+        flash('Post Has Been Deleted!')
+        # Redirect back the blog post list
+        # Below is the same as the 'posts' page/function:
+        posts = Posts.query.order_by(Posts.date_posted)
+        return render_template('posts.html', posts=posts)
+    except:
+        flash('Error Deleting Post!')
+        posts = Posts.query.order_by(Posts.date_posted)
+        return render_template('posts.html', posts=posts)
 
 # Create a user form
 class UserForm(FlaskForm):
     name = StringField('Name', validators=[DataRequired()])
+    username = StringField('Username', validators=[DataRequired()])
     email = StringField('Email', validators=[DataRequired()])
     favorite_color = StringField('Favorite Color')
     password_hash = PasswordField('Password', validators=[DataRequired(), EqualTo('password_hash2')])
@@ -178,7 +227,7 @@ def add_user():
             # hash the password
             hashed_pw = generate_password_hash(form.password_hash.data, 'sha256')
             # create new user from form data
-            user = Users(name=form.name.data, email=form.email.data, favorite_color=form.favorite_color.data, password_hash=hashed_pw)
+            user = Users(username=form.username.data, name=form.name.data, email=form.email.data, favorite_color=form.favorite_color.data, password_hash=hashed_pw)
             db.session.add(user)
             db.session.commit()
         name = form.name.data
@@ -186,6 +235,7 @@ def add_user():
         form.email.data = ''
         form.favorite_color.data = ''
         form.password_hash.data = ''
+        form.username.data = ''
         flash('User Successfully Added!')
     our_users = Users.query.order_by(Users.date_added)
     return render_template('add_user.html', form=form, name=name, our_users=our_users)
