@@ -1,6 +1,7 @@
-#https://stackoverflow.com/questions/34281873/how-do-i-split-flask-models-out-of-app-py-without-passing-db-object-all-over
+# https://stackoverflow.com/questions/34281873/how-do-i-split-flask-models-out-of-app-py-without-passing-db-object-all-over
+# https://github.com/realpython/flask-by-example/blob/master/models.py
 
-from hello import db
+from app import db
 # from hello import app
 # from flask_sqlalchemy import SQLAlchemy
 # from flask_migrate import Migrate
@@ -18,7 +19,13 @@ class Users(db.Model, UserMixin):
     email = db.Column(db.String(120), nullable=False, unique=True) # must be unique
     date_added = db.Column(db.DateTime, default=datetime.utcnow)
     favorite_color = db.Column(db.String(120))
+    about_author = db.Column(db.Text(500), nullable=True)
+    profile_pic = db.Column(db.String(), nullable=True)
     password_hash = db.Column(db.String(128))
+    # user can have many posts
+    # backref allows to access any attribute in 'Users' from 'Posts' instance
+    # ex = post.poster.id, post.poster.username, etc.
+    posts = db.relationship('Posts', backref='poster')
 
     @property
     def password(self):
@@ -39,6 +46,9 @@ class Posts(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(255))
     content = db.Column(db.Text)
-    author = db.Column(db.String(255))
+    # author = db.Column(db.String(255))
     date_posted = db.Column(db.DateTime, default=datetime.utcnow)
     slug = db.Column(db.String(255)) # way to reference post in URL other than just using ID
+    # Foreign key to link user (refer to primary key)
+    # 'users' is lowercase 'u' because table is database is actually lowercase
+    poster_id = db.Column(db.Integer, db.ForeignKey('users.id'))

@@ -8,12 +8,18 @@ from werkzeug.security import generate_password_hash, check_password_hash
 # pip install flask_login
 # handles login/out functions, but *does not* handle user registration
 from flask_login import UserMixin, login_user, LoginManager, login_required, logout_user, current_user
+# pip install flask-ckeditor
+from flask_ckeditor import CKEditor
+from werkzeug.utils import secure_filename # generates unique filename
+from uuid import uuid1
+import os  # allows file system functions
 # import all forms from forms.py
 # from forms import LoginForm, PostForm, UserForm, PasswordForm, NameForm
 from forms import *
 
 # Create a flask instance:
 app = Flask(__name__)
+ckeditor = CKEditor(app) # initialize CKEditor for 'app'
 
 # Add database to app:
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
@@ -22,6 +28,8 @@ db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 # Equivalent to csrf_token
 app.config['SECRET_KEY'] = 'my super secret key that no one is supposed to know'
+UPLOAD_FOLDER = 'static/images/'
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 from models import * # must come after database definitions
 
@@ -79,12 +87,32 @@ def dashboard():
         name_to_update.email = request.form['email']
         name_to_update.favorite_color = request.form['favorite_color']
         name_to_update.username = request.form['username']
-        try:
+        name_to_update.about_author = request.form['about_author']
+                
+        # check for uploaded profile pic; if not specified, retain the old one
+        if request.files['profile_pic']:
+            # notice that this is a 'request.files', since uploading a file(name)
+            name_to_update.profile_pic = request.files['profile_pic']
+            # want to ensure that image name is unique
+            # grab image name
+            pic_filename = secure_filename(name_to_update.profile_pic.filename)
+            # set UUID; uuid(1) = 'Generate a UUID from a host ID, sequence number, and the current time'
+            pic_name = str(uuid1()) + '_' + pic_filename
+            # don't want to save image in database, though
+            name_to_update.profile_pic.save(os.path.join(app.config['UPLOAD_FOLDER'], pic_name))
+            # change to unique name generated above
+            name_to_update.profile_pic = pic_name
+            try:
+                db.session.commit() # commits current values (from form) to DB
+                flash('User Update Successful!')
+                return render_template('dashboard.html', form=form, name_to_update=name_to_update)
+            except:
+                flash('Error - Update Unsuccessful!')
+                return render_template('dashboard.html', form=form, name_to_update=name_to_update)
+        # commit everything *but* the profile_pic
+        else:
             db.session.commit() # commits current values (from form) to DB
             flash('User Update Successful!')
-            return render_template('dashboard.html', form=form, name_to_update=name_to_update)
-        except:
-            flash('Error - Update Unsuccessful!')
             return render_template('dashboard.html', form=form, name_to_update=name_to_update)
     else:
         return render_template('dashboard.html', form=form, name_to_update=name_to_update, id=id)
@@ -109,12 +137,13 @@ def post(id):
 def add_post():
     form = PostForm()
     if form.validate_on_submit():
-        post = Posts(title=form.title.data, content=form.content.data, author=form.author.data, slug=form.slug.data)
+        poster = current_user.id
+        post = Posts(title=form.title.data, content=form.content.data, poster_id=poster, slug=form.slug.data)
         # Clear the form
         form.title.data = ''
         form.content.data = ''
         form.slug.data = ''
-        form.author.data = ''
+        # form.author.data = ''
         # Add to database
         db.session.add(post)
         db.session.commit()
@@ -131,7 +160,7 @@ def edit_post(id):
     post = Posts.query.get_or_404(id)
     if form.validate_on_submit(): # if form has been submitted
         post.title = form.title.data
-        post.author = form.author.data
+        # post.author = form.author.data
         post.slug = form.slug.data
         post.content = form.content.data
         # Update database
@@ -139,28 +168,40 @@ def edit_post(id):
         db.session.commit()
         flash('Post Has Been Updated!')
         return redirect(url_for('post', id=post.id))
-    # If just loading the page
-    form.title.data = post.title
-    form.author.data = post.author
-    form.slug.data = post.slug
-    form.content.data = post.content
-    return render_template('edit_post.html', form=form)
+    # Only load the page for original poster:
+    if current_user.id == post.poster.id:
+        form.title.data = post.title
+        # form.author.data = post.author
+        form.slug.data = post.slug
+        form.content.data = post.content
+        return render_template('edit_post.html', form=form)
+    else:
+        flash('You Aren\'t Authorized To Edit This Post')
+        posts = Posts.query.order_by(Posts.date_posted)
+        return render_template('posts.html', posts=posts)
 
 # Delete Post
 @app.route('/posts/delete/<int:id>')
 @login_required
 def delete_post(id):
+    # This 'id' is passed in the URL
     post_to_delete = Posts.query.get_or_404(id)
-    try:
-        db.session.delete(post_to_delete)
-        db.session.commit()
-        flash('Post Has Been Deleted!')
-        # Redirect back the blog post list
-        # Below is the same as the 'posts' page/function:
-        posts = Posts.query.order_by(Posts.date_posted)
-        return render_template('posts.html', posts=posts)
-    except:
-        flash('Error Deleting Post!')
+    id = current_user.id
+    if id == post_to_delete.poster.id:
+        try:
+            db.session.delete(post_to_delete)
+            db.session.commit()
+            flash('Post Has Been Deleted!')
+            # Redirect back the blog post list
+            # Below is the same as the 'posts' page/function:
+            posts = Posts.query.order_by(Posts.date_posted)
+            return render_template('posts.html', posts=posts)
+        except:
+            flash('Error Deleting Post!')
+            posts = Posts.query.order_by(Posts.date_posted)
+            return render_template('posts.html', posts=posts)
+    else:
+        flash('You Aren\'t Authorized To Delete This Post')
         posts = Posts.query.order_by(Posts.date_posted)
         return render_template('posts.html', posts=posts)
         
@@ -220,7 +261,9 @@ def add_user():
     our_users = Users.query.order_by(Users.date_added)
     return render_template('add_user.html', form=form, name=name, our_users=our_users)
 
+# Update user
 @app.route('/update/<int:id>', methods=['GET', 'POST'])
+@login_required
 def update(id):
     form = UserForm()
     name_to_update = Users.query.get_or_404(id)
@@ -240,20 +283,26 @@ def update(id):
         return render_template('update.html', form=form, name_to_update=name_to_update, id=id)
 
 @app.route('/delete/<int:id>', methods=['GET', 'POST'])
+@login_required
 def delete(id):
-    user_to_delete = Users.query.get_or_404(id)
-    name = None
-    form = UserForm()
-    try:
-        db.session.delete(user_to_delete)
-        db.session.commit()
-        flash('User Deleted Successfully!')
-        our_users = Users.query.order_by(Users.date_added)
-        return render_template('add_user.html', form=form, name=name, our_users=our_users)
+    if id == current_user.id:
+        user_to_delete = Users.query.get_or_404(id)
+        name = None
+        form = UserForm()
+        try:
+            db.session.delete(user_to_delete)
+            db.session.commit()
+            flash('User Deleted Successfully!')
+            our_users = Users.query.order_by(Users.date_added)
+            return render_template('add_user.html', form=form, name=name, our_users=our_users)
 
-    except:
-        flash('Error With User Deletion!')
-        return render_template('add_user.html', form=form, name=name, our_users=our_users)
+        except:
+            flash('Error With User Deletion!')
+            return render_template('add_user.html', form=form, name=name, our_users=our_users)
+    else:
+        flash('Sorry, You Can\'t Delete Another User!')
+        return redirect(url_for('dashboard'))
+
 
 # Password test page
 @app.route('/test_pw', methods=['GET', 'POST'])
@@ -283,8 +332,50 @@ def test_pw():
         form=form,
     )
 
+# How to pass stuff to Navbar ('included' in base.html)
+# How does this know to appy to base.html and not everything?
+@app.context_processor
+def base(): # caled base because passing into 'base.html', but could be called anything
+	form = SearchForm()
+	return dict(form=form)
 
+@app.route('/search', methods=["POST"]) # only POST because no page to load for seach bar
+def search():
+    form = SearchForm()
+    posts = Posts.query
+    if form.validate_on_submit():  ### This doesn't work - why?
+        # get data from submitted form
+        post.searched = form.searched.data
+        # query the database for any content that contains post.searched anywhere
+        posts = posts.filter(Posts.content.like('%' + post.searched + '%'))
+        # sort by title and return all results
+        posts = posts.order_by(Posts.title).all()
+        return render_template("search.html",
+		 form=form,
+		 searched = post.searched,
+         posts=posts)
+    else:
+        # get data from submitted form
+        post.searched = form.searched.data
+        # query the database for any content that contains post.searched anywhere
+        posts = posts.filter(Posts.content.like('%' + post.searched + '%'))
+        # sort by title and return all results
+        posts = posts.order_by(Posts.title).all()
+        return render_template("search.html",
+		 form=form,
+		 searched = post.searched,
+         posts=posts)
 
+# Create Admin page
+@app.route('/admin')
+@login_required
+def admin():
+    id = current_user.id
+    if id == 1:  # this is a really 'janky' way to enforce admin rights (!)
+        return render_template('admin.html')
+    else:
+        flash('Sorry, you must be Admin to access the Admin page!')
+        return redirect(url_for('dashboard'))
 
 # Create custom error pages:
 # Invalid URL:

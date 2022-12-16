@@ -10,15 +10,11 @@
     </div>
 {% endfor %}
 
-{% if name %}
-    <h1>Update User!</h1>
-    <br/>
+<!-- Ensure user can only edit their own profile -->
+{% if id == current_user.id %}
     
-    <br/><br/>
-    
-    {% else %}
     <h1>Update User:</h1>
-    <br/>
+    <br/><br/>
     <div class="shadow p-3 mb-5 bg-body rounded">
     <form method="POST" action="/update/{{ name_to_update.id }}">
         {{ form.hidden_tag() }}
@@ -37,8 +33,15 @@
         <a href="{{ url_for('delete', id=name_to_update.id) }}" class="btn btn-danger">Delete</a>
     </form>
 </div>
-{% endif %}
+{% else %}
 
+    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+    You Aren't Authorized To Edit This User!
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    <h2>Access Denied!</h2>
+
+{% endif %}
 
 <table class="table table-hover table-bordered table-striped">
 {% for our_user in our_users %}

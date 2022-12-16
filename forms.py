@@ -1,10 +1,17 @@
 # pip install flask-wtf
 from flask_wtf import FlaskForm
-from wtforms import StringField, SubmitField, PasswordField, BooleanField, ValidationError # many other kinds of fields
+from wtforms import StringField, SubmitField, PasswordField, TextAreaField, BooleanField, ValidationError # many other kinds of fields
 from wtforms.validators import DataRequired, EqualTo, Length # there are many other kinds of validators, as well
 from wtforms.widgets import TextArea
+from flask_wtf.file import FileField
+from flask_ckeditor import CKEditorField
 
-# Create LoginForm:
+# Search form:
+class SearchForm(FlaskForm):
+	searched = StringField("Searched", validators=[DataRequired()])
+	submit = SubmitField("Submit")
+
+# Create Login Form
 class LoginForm(FlaskForm):
 	username = StringField("Username", validators=[DataRequired()])
 	password = PasswordField("Password", validators=[DataRequired()])
@@ -19,8 +26,10 @@ class PasswordForm(FlaskForm):
 # Create a Posts form
 class PostForm(FlaskForm):
     title = StringField('Title', validators=[DataRequired()])
-    content = StringField('Content', validators=[DataRequired()], widget=TextArea())
-    author = StringField('Author', validators=[DataRequired()])
+    # content = StringField('Content', validators=[DataRequired()], widget=TextArea())
+	# Implement CKEditor for specific field
+    content = CKEditorField('Content', validators=[DataRequired()])
+	# author = StringField('Author', validators=[DataRequired()])
     slug = StringField('Slug', validators=[DataRequired()])
     submit = SubmitField("Submit")
 
@@ -33,6 +42,8 @@ class UserForm(FlaskForm):
     password_hash = PasswordField('Password', validators=[DataRequired(), EqualTo('password_hash2')])
     password_hash2 = PasswordField('Confirm Password', validators=[DataRequired()])
     submit = SubmitField('Add\\Update User') # 'submit' button
+    about_author = TextAreaField('About Author')
+    profile_pic = FileField("Profile Pic")
 
 # Create a form class
 class NameForm(FlaskForm):
