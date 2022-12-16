@@ -370,8 +370,9 @@ def search():
 @app.route('/admin')
 @login_required
 def admin():
-    id = current_user.id
-    if id == 1:  # this is a really 'janky' way to enforce admin rights (!)
+    if current_user.is_superuser == True:
+    # id = current_user.id
+    # if id == 1:  # this is a really 'janky' way to enforce admin rights (!)
         return render_template('admin.html')
     else:
         flash('Sorry, you must be Admin to access the Admin page!')

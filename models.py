@@ -22,6 +22,7 @@ class Users(db.Model, UserMixin):
     about_author = db.Column(db.Text(500), nullable=True)
     profile_pic = db.Column(db.String(), nullable=True)
     password_hash = db.Column(db.String(128))
+    is_superuser = db.Column(db.Boolean, default=False, nullable=False)
     # user can have many posts
     # backref allows to access any attribute in 'Users' from 'Posts' instance
     # ex = post.poster.id, post.poster.username, etc.
